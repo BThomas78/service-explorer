@@ -82,14 +82,32 @@ export function renderLayerList(layers = [], tables = []) {
   `;
 }
 
-export function renderLayerDetails(layerJson) {
+export function renderLayerDetails(layerJson, fieldFilter = "") {
   const name = layerJson.name || "Unnamed layer";
   const geometryType = layerJson.geometryType || "N/A";
   const type = layerJson.type || "N/A";
   const objectIdField = layerJson.objectIdField || "N/A";
   const fields = Array.isArray(layerJson.fields) ? layerJson.fields : [];
 
-  const fieldsHtml = fields.length
+  const filterText = String(fieldFilter || "")
+    .trim()
+    .toLowerCase();
+
+  const filteredFields = filterText
+    ? fields.filter((f) => {
+        const nameText = String(f.name || "").toLowerCase();
+        const aliasText = String(f.alias || "").toLowerCase();
+        const typeText = String(f.type || "").toLowerCase();
+
+        return (
+          nameText.includes(filterText) ||
+          aliasText.includes(filterText) ||
+          typeText.includes(filterText)
+        );
+      })
+    : fields;
+
+  const fieldsHtml = filteredFields.length
     ? `
       <div class="table-wrap">
         <table class="fields-table">
@@ -101,7 +119,7 @@ export function renderLayerDetails(layerJson) {
             </tr>
           </thead>
           <tbody>
-            ${fields
+            ${filteredFields
               .map(
                 (f) => `
                 <tr>
@@ -116,7 +134,7 @@ export function renderLayerDetails(layerJson) {
         </table>
       </div>
     `
-    : `<p class="empty-state">No fields returned for this layer/table.</p>`;
+    : `<p class="empty-state">No fields match your filter.</p>`;
 
   return `
     <div>
@@ -124,7 +142,19 @@ export function renderLayerDetails(layerJson) {
       <p><strong>Type:</strong> ${escapeHtml(type)}</p>
       <p><strong>Geometry:</strong> ${escapeHtml(geometryType)}</p>
       <p><strong>ObjectID Field:</strong> ${escapeHtml(objectIdField)}</p>
-      <h3 class="subhead">Fields (${fields.length})</h3>
+
+      <div class="field-filter-wrap">
+        <label for="fieldFilterInput" class="sr-only">Filter fields</label>
+        <input
+          id="fieldFilterInput"
+          class="field-filter-input"
+          type="text"
+          placeholder="Filter fields by name, alias, or type..."
+          value="${escapeHtml(fieldFilter)}"
+        />
+      </div>
+
+      <h3 class="subhead">Fields (${filteredFields.length} of ${fields.length})</h3>
       ${fieldsHtml}
     </div>
   `;

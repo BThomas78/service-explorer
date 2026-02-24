@@ -221,3 +221,20 @@ code {
   opacity: 0.65;
   cursor: not-allowed;
 }
+
+.field-filter-wrap {
+  margin: 0.75rem 0;
+}
+
+.field-filter-input {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.controls button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}

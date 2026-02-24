@@ -68,6 +68,8 @@ const layerDetailsEl = document.querySelector("#layerDetails");
 serviceUrlInput.value = DEFAULT_SERVICE_URL;
 
 let currentServiceUrl = "";
+let currentLayerJson = null;
+let currentFieldFilter = "";
 
 loadBtn.addEventListener("click", handleLoadService);
 clearBtn.addEventListener("click", handleClear);
@@ -91,11 +93,35 @@ layerListEl.addEventListener("click", async (event) => {
 
   try {
     const layerJson = await fetchLayer(currentServiceUrl, layerId);
-    layerDetailsEl.innerHTML = renderLayerDetails(layerJson);
+    currentLayerJson = layerJson;
+    currentFieldFilter = "";
+    layerDetailsEl.innerHTML = renderLayerDetails(
+      currentLayerJson,
+      currentFieldFilter,
+    );
     setStatus(`Loaded details for ${layerName}.`, "success");
   } catch (err) {
     layerDetailsEl.innerHTML = `<p class="empty-state">Could not load layer details.</p>`;
     setStatus(err.message || "Failed to load layer details.", "error");
+  }
+});
+
+layerDetailsEl.addEventListener("input", (event) => {
+  const input = event.target.closest("#fieldFilterInput");
+  if (!input || !currentLayerJson) return;
+
+  currentFieldFilter = input.value;
+  layerDetailsEl.innerHTML = renderLayerDetails(
+    currentLayerJson,
+    currentFieldFilter,
+  );
+
+  // Keep focus in the filter box after re-render
+  const newInput = layerDetailsEl.querySelector("#fieldFilterInput");
+  if (newInput) {
+    newInput.focus();
+    const cursorPos = currentFieldFilter.length;
+    newInput.setSelectionRange(cursorPos, cursorPos);
   }
 });
 
@@ -113,6 +139,7 @@ async function handleLoadService() {
   setLoadingState(true);
 
   try {
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // TEMP test
     const serviceJson = await fetchService(url);
 
     currentServiceUrl = stripQuery(url);
@@ -141,7 +168,9 @@ function handleClear() {
   if (loadBtn.disabled) return;
 
   currentServiceUrl = "";
-  serviceUrlInput.value = "";
+  currentLayerJson = null;
+  currentFieldFilter = "";
+  serviceUrlInput.value = DEFAULT_SERVICE_URL;
   statusEl.textContent = "";
   statusEl.className = "status";
 
