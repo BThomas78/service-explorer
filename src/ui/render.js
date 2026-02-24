@@ -87,6 +87,7 @@ export function renderLayerDetails(layerJson, fieldFilter = "") {
   const geometryType = layerJson.geometryType || "N/A";
   const type = layerJson.type || "N/A";
   const objectIdField = layerJson.objectIdField || "N/A";
+  const layerId = layerJson.id ?? "";
   const fields = Array.isArray(layerJson.fields) ? layerJson.fields : [];
 
   const filterText = String(fieldFilter || "")
@@ -142,6 +143,16 @@ export function renderLayerDetails(layerJson, fieldFilter = "") {
       <p><strong>Type:</strong> ${escapeHtml(type)}</p>
       <p><strong>Geometry:</strong> ${escapeHtml(geometryType)}</p>
       <p><strong>ObjectID Field:</strong> ${escapeHtml(objectIdField)}</p>
+
+      <div class="detail-actions">
+        <button
+          type="button"
+          class="copy-layer-url-btn"
+          data-copy-layer-id="${escapeHtml(layerId)}"
+        >
+          Copy Layer URL
+        </button>
+      </div>
 
       <div class="field-filter-wrap">
         <label for="fieldFilterInput" class="sr-only">Filter fields</label>

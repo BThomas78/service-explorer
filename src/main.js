@@ -70,6 +70,7 @@ serviceUrlInput.value = DEFAULT_SERVICE_URL;
 let currentServiceUrl = "";
 let currentLayerJson = null;
 let currentFieldFilter = "";
+let currentLayerUrl = "";
 
 loadBtn.addEventListener("click", handleLoadService);
 clearBtn.addEventListener("click", handleClear);
@@ -94,6 +95,7 @@ layerListEl.addEventListener("click", async (event) => {
   try {
     const layerJson = await fetchLayer(currentServiceUrl, layerId);
     currentLayerJson = layerJson;
+    currentLayerUrl = `${currentServiceUrl}/${layerId}`;
     currentFieldFilter = "";
     layerDetailsEl.innerHTML = renderLayerDetails(
       currentLayerJson,
@@ -125,6 +127,23 @@ layerDetailsEl.addEventListener("input", (event) => {
   }
 });
 
+layerDetailsEl.addEventListener("click", async (event) => {
+  const copyBtn = event.target.closest(".copy-layer-url-btn");
+  if (!copyBtn) return;
+
+  if (!currentLayerUrl) {
+    setStatus("No layer URL available to copy.", "error");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(currentLayerUrl);
+    setStatus("Layer URL copied to clipboard.", "success");
+  } catch (err) {
+    setStatus("Clipboard copy failed. Try copying manually.", "error");
+  }
+});
+
 async function handleLoadService() {
   const url = serviceUrlInput.value.trim();
 
@@ -134,12 +153,14 @@ async function handleLoadService() {
   }
 
   currentServiceUrl = "";
+  currentLayerJson = null;
+  currentFieldFilter = "";
+  currentLayerUrl = "";
   clearResults();
   setStatus("Loading service metadata...", "success");
   setLoadingState(true);
 
   try {
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // TEMP test
     const serviceJson = await fetchService(url);
 
     currentServiceUrl = stripQuery(url);
@@ -170,6 +191,7 @@ function handleClear() {
   currentServiceUrl = "";
   currentLayerJson = null;
   currentFieldFilter = "";
+  currentLayerUrl = "";
   serviceUrlInput.value = DEFAULT_SERVICE_URL;
   statusEl.textContent = "";
   statusEl.className = "status";
