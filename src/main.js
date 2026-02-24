@@ -6,6 +6,9 @@ import {
   renderServiceHeader,
 } from "./ui/render.js";
 
+const DEFAULT_SERVICE_URL =
+  "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer";
+
 document.querySelector("#app").innerHTML = `
   <div class="app-shell">
     <header class="app-header">
@@ -19,8 +22,12 @@ document.querySelector("#app").innerHTML = `
         id="serviceUrl"
         type="url"
         placeholder="Paste ArcGIS Feature Service URL here..."
+        value="https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer"
       />
-      <button id="loadBtn" type="button">Load</button>
+      <div class="control-buttons">
+        <button id="loadBtn" type="button">Load</button>
+        <button id="clearBtn" type="button" class="secondary-btn">Clear</button>
+      </div>
     </section>
 
     <section id="status" class="status" aria-live="polite"></section>
@@ -51,15 +58,20 @@ document.querySelector("#app").innerHTML = `
 `;
 
 const loadBtn = document.querySelector("#loadBtn");
+const clearBtn = document.querySelector("#clearBtn");
 const serviceUrlInput = document.querySelector("#serviceUrl");
 const statusEl = document.querySelector("#status");
 const serviceInfoEl = document.querySelector("#serviceInfo");
 const layerListEl = document.querySelector("#layerList");
 const layerDetailsEl = document.querySelector("#layerDetails");
 
+serviceUrlInput.value = DEFAULT_SERVICE_URL;
+
 let currentServiceUrl = "";
 
 loadBtn.addEventListener("click", handleLoadService);
+clearBtn.addEventListener("click", handleClear);
+
 serviceUrlInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     handleLoadService();
@@ -98,6 +110,7 @@ async function handleLoadService() {
   currentServiceUrl = "";
   clearResults();
   setStatus("Loading service metadata...", "success");
+  setLoadingState(true);
 
   try {
     const serviceJson = await fetchService(url);
@@ -119,7 +132,36 @@ async function handleLoadService() {
     serviceInfoEl.innerHTML = `<p class="empty-state">No service info loaded.</p>`;
     layerListEl.innerHTML = `<p class="empty-state">No layers loaded.</p>`;
     layerDetailsEl.innerHTML = `<p class="empty-state">No layer details loaded.</p>`;
+  } finally {
+    setLoadingState(false);
   }
+}
+
+function handleClear() {
+  if (loadBtn.disabled) return;
+
+  currentServiceUrl = "";
+  serviceUrlInput.value = "";
+  statusEl.textContent = "";
+  statusEl.className = "status";
+
+  serviceInfoEl.innerHTML = `
+    <div class="empty-state">
+      Enter a service URL and click <strong>Load</strong>.
+    </div>
+  `;
+  layerListEl.innerHTML = `<p class="empty-state">No data loaded yet.</p>`;
+  layerDetailsEl.innerHTML = `
+    <p class="empty-state">Select a layer to view fields and metadata.</p>
+  `;
+
+  serviceUrlInput.focus();
+}
+
+function setLoadingState(isLoading) {
+  loadBtn.disabled = isLoading;
+  clearBtn.disabled = isLoading;
+  loadBtn.textContent = isLoading ? "Loading..." : "Load";
 }
 
 function clearResults() {
