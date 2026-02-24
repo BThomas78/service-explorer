@@ -1,0 +1,149 @@
+import "./styles.css";
+import { fetchLayer, fetchService } from "./api/arcgis.js";
+import {
+  renderLayerDetails,
+  renderLayerList,
+  renderServiceHeader,
+} from "./ui/render.js";
+
+document.querySelector("#app").innerHTML = `
+  <div class="app-shell">
+    <header class="app-header">
+      <h1>Service Explorer</h1>
+      <p>Load an ArcGIS Feature Service and inspect layers and fields.</p>
+    </header>
+
+    <section class="controls">
+      <label for="serviceUrl" class="sr-only">Feature Service URL</label>
+      <input
+        id="serviceUrl"
+        type="url"
+        placeholder="Paste ArcGIS Feature Service URL here..."
+      />
+      <button id="loadBtn" type="button">Load</button>
+    </section>
+
+    <section id="status" class="status" aria-live="polite"></section>
+
+    <main class="layout">
+      <section class="panel">
+        <h2>Service Info</h2>
+        <div id="serviceInfo" class="panel-body empty-state">
+          Enter a service URL and click <strong>Load</strong>.
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Layers & Tables</h2>
+        <div id="layerList" class="panel-body empty-state">
+          No data loaded yet.
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Layer Details</h2>
+        <div id="layerDetails" class="panel-body empty-state">
+          Select a layer to view fields and metadata.
+        </div>
+      </section>
+    </main>
+  </div>
+`;
+
+const loadBtn = document.querySelector("#loadBtn");
+const serviceUrlInput = document.querySelector("#serviceUrl");
+const statusEl = document.querySelector("#status");
+const serviceInfoEl = document.querySelector("#serviceInfo");
+const layerListEl = document.querySelector("#layerList");
+const layerDetailsEl = document.querySelector("#layerDetails");
+
+let currentServiceUrl = "";
+
+loadBtn.addEventListener("click", handleLoadService);
+serviceUrlInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    handleLoadService();
+  }
+});
+
+layerListEl.addEventListener("click", async (event) => {
+  const btn = event.target.closest(".layer-btn");
+  if (!btn || !currentServiceUrl) return;
+
+  const layerId = btn.dataset.layerId;
+  const layerName = btn.dataset.layerName || `Layer ${layerId}`;
+
+  setActiveLayerButton(btn);
+  setStatus(`Loading details for ${layerName}...`, "success");
+  layerDetailsEl.innerHTML = `<p>Loading layer details...</p>`;
+
+  try {
+    const layerJson = await fetchLayer(currentServiceUrl, layerId);
+    layerDetailsEl.innerHTML = renderLayerDetails(layerJson);
+    setStatus(`Loaded details for ${layerName}.`, "success");
+  } catch (err) {
+    layerDetailsEl.innerHTML = `<p class="empty-state">Could not load layer details.</p>`;
+    setStatus(err.message || "Failed to load layer details.", "error");
+  }
+});
+
+async function handleLoadService() {
+  const url = serviceUrlInput.value.trim();
+
+  if (!url) {
+    setStatus("Please paste a Feature Service URL first.", "error");
+    return;
+  }
+
+  currentServiceUrl = "";
+  clearResults();
+  setStatus("Loading service metadata...", "success");
+
+  try {
+    const serviceJson = await fetchService(url);
+
+    currentServiceUrl = stripQuery(url);
+    serviceInfoEl.innerHTML = renderServiceHeader(serviceJson);
+    layerListEl.innerHTML = renderLayerList(
+      serviceJson.layers,
+      serviceJson.tables,
+    );
+    layerDetailsEl.innerHTML = `
+      <p class="empty-state">
+        Service loaded. Click a layer or table to view fields and metadata.
+      </p>
+    `;
+    setStatus("Service loaded successfully.", "success");
+  } catch (err) {
+    setStatus(err.message || "Failed to load service.", "error");
+    serviceInfoEl.innerHTML = `<p class="empty-state">No service info loaded.</p>`;
+    layerListEl.innerHTML = `<p class="empty-state">No layers loaded.</p>`;
+    layerDetailsEl.innerHTML = `<p class="empty-state">No layer details loaded.</p>`;
+  }
+}
+
+function clearResults() {
+  serviceInfoEl.innerHTML = `<p class="empty-state">Loading...</p>`;
+  layerListEl.innerHTML = `<p class="empty-state">Loading...</p>`;
+  layerDetailsEl.innerHTML = `<p class="empty-state">Waiting for service load...</p>`;
+}
+
+function setStatus(message, type = "") {
+  statusEl.textContent = message;
+  statusEl.className = `status ${type}`.trim();
+}
+
+function setActiveLayerButton(activeBtn) {
+  layerListEl.querySelectorAll(".layer-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn === activeBtn);
+  });
+}
+
+function stripQuery(url) {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.origin}${parsed.pathname}`.replace(/\/+$/, "");
+  } catch {
+    return url;
+  }
+}
