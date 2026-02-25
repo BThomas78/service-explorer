@@ -216,7 +216,19 @@ layerDetailsEl.addEventListener("click", async (event) => {
     setStatus("Preview records loaded.", "success");
   } catch (err) {
     recordPreviewEl.innerHTML = `<p class="empty-state">Could not load preview records.</p>`;
-    setStatus(err.message || "Failed to load preview records.", "error");
+    const msg = err?.message || "Failed to load preview records.";
+    const lower = msg.toLowerCase();
+    const whereHint =
+      lower.includes("where") ||
+      lower.includes("sql") ||
+      lower.includes("invalid") ||
+      lower.includes("parse") ||
+      lower.includes("execute query") ||
+      lower.includes("code 400")
+        ? " Check your WHERE clause syntax (field names, quotes, and operators)."
+        : "";
+
+    setStatus(`${msg}${whereHint}`, "error");
   }
 });
 
