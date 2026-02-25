@@ -81,6 +81,8 @@ let currentLayerJson = null;
 let currentFieldFilter = "";
 let currentLayerUrl = "";
 let currentLayerId = null;
+let currentPreviewWhere = "1=1";
+let currentPreviewRecordCount = 5;
 
 loadBtn.addEventListener("click", handleLoadService);
 clearBtn.addEventListener("click", handleClear);
@@ -101,17 +103,21 @@ layerListEl.addEventListener("click", async (event) => {
 
   setActiveLayerButton(btn);
   setStatus(`Loading details for ${layerName}...`, "info");
-  layerDetailsEl.innerHTML = `<p>Loading layer details...</p>`;
-  recordPreviewEl.innerHTML = `<p class="empty-state">Click <strong>Preview 5 Records</strong> to load sample attributes.</p>`;
+  layerDetailsEl.innerHTML = `<p> class="empty-state">Loading layer details...</p>`;
+  recordPreviewEl.innerHTML = `<p class="empty-state">Click <strong>Preview Records</strong> to load sample attributes.</p>`;
 
   try {
     const layerJson = await fetchLayer(currentServiceUrl, layerId);
     currentLayerJson = layerJson;
     currentLayerUrl = `${currentServiceUrl}/${layerId}`;
     currentFieldFilter = "";
+    currentPreviewWhere = "1=1";
+    currentPreviewRecordCount = 5;
     layerDetailsEl.innerHTML = renderLayerDetails(
       currentLayerJson,
       currentFieldFilter,
+      currentPreviewWhere,
+      currentPreviewRecordCount,
     );
     setStatus(`Loaded details for ${layerName}.`, "success");
   } catch (err) {
@@ -121,21 +127,49 @@ layerListEl.addEventListener("click", async (event) => {
 });
 
 layerDetailsEl.addEventListener("input", (event) => {
-  const input = event.target.closest("#fieldFilterInput");
-  if (!input || !currentLayerJson) return;
+  const fieldInput = event.target.closest("#fieldFilterInput");
+  const whereInput = event.target.closest("#previewWhereInput");
+  const countInput = event.target.closest("#previewCountInput");
 
-  currentFieldFilter = input.value;
+  if (!currentLayerJson) return;
+
+  if (fieldInput) {
+    currentFieldFilter = fieldInput.value;
+  }
+
+  if (whereInput) {
+    currentPreviewWhere = whereInput.value;
+  }
+
+  if (countInput) {
+    const nextCount = Number(countInput.value);
+    if (Number.isFinite(nextCount)) {
+      currentPreviewRecordCount = Math.max(
+        1,
+        Math.min(100, Math.floor(nextCount)),
+      );
+    }
+  }
+
+  if (!fieldInput && !whereInput && !countInput) return;
+
   layerDetailsEl.innerHTML = renderLayerDetails(
     currentLayerJson,
     currentFieldFilter,
+    currentPreviewWhere,
+    currentPreviewRecordCount,
   );
 
-  // Keep focus in the filter box after re-render
-  const newInput = layerDetailsEl.querySelector("#fieldFilterInput");
+  // Restore focus to whichever input was edited
+  const activeId = event.target.id;
+  const newInput = layerDetailsEl.querySelector(`#${activeId}`);
   if (newInput) {
     newInput.focus();
-    const cursorPos = currentFieldFilter.length;
-    newInput.setSelectionRange(cursorPos, cursorPos);
+
+    if (newInput.tagName === "INPUT" && newInput.type !== "number") {
+      const valueLength = String(newInput.value ?? "").length;
+      newInput.setSelectionRange(valueLength, valueLength);
+    }
   }
 });
 
@@ -172,8 +206,12 @@ layerDetailsEl.addEventListener("click", async (event) => {
     const queryJson = await fetchLayerPreview(
       currentServiceUrl,
       currentLayerId,
-      5,
+      {
+        where: currentPreviewWhere,
+        recordCount: currentPreviewRecordCount,
+      },
     );
+
     recordPreviewEl.innerHTML = renderRecordPreview(queryJson);
     setStatus("Preview records loaded.", "success");
   } catch (err) {
@@ -195,6 +233,8 @@ async function handleLoadService() {
   currentFieldFilter = "";
   currentLayerUrl = "";
   currentLayerId = null;
+  currentPreviewWhere = "1=1";
+  currentPreviewRecordCount = 5;
   clearResults();
   setStatus("Loading service metadata...", "info");
   setLoadingState(true);
@@ -232,6 +272,8 @@ function handleClear() {
   currentFieldFilter = "";
   currentLayerUrl = "";
   currentLayerId = null;
+  currentPreviewWhere = "1=1";
+  currentPreviewRecordCount = 5;
   serviceUrlInput.value = DEFAULT_SERVICE_URL;
   statusEl.textContent = "";
   statusEl.className = "status";
@@ -245,6 +287,9 @@ function handleClear() {
   layerDetailsEl.innerHTML = `
     <p class="empty-state">Select a layer to view fields and metadata.</p>
   `;
+  recordPreviewEl.innerHTML = `
+  <p class="empty-state">Select a layer, then click <strong>Preview Records</strong>.</p>
+`;
 
   serviceUrlInput.focus();
 }

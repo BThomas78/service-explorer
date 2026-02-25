@@ -82,7 +82,12 @@ export function renderLayerList(layers = [], tables = []) {
   `;
 }
 
-export function renderLayerDetails(layerJson, fieldFilter = "") {
+export function renderLayerDetails(
+  layerJson,
+  fieldFilter = "",
+  previewWhere = "1=1",
+  previewRecordCount = 5,
+) {
   const name = layerJson.name || "Unnamed layer";
   const geometryType = layerJson.geometryType || "N/A";
   const type = layerJson.type || "N/A";
@@ -158,10 +163,36 @@ export function renderLayerDetails(layerJson, fieldFilter = "") {
           class="preview-records-btn"
           data-preview-layer-id="${escapeHtml(layerId)}"
         >
-          Preview 5 Records
+          Preview ${escapeHtml(previewRecordCount)} Records
         </button>
       </div>
 
+      <div class="query-controls">
+  <div class="query-control">
+    <label for="previewWhereInput">WHERE clause</label>
+    <input
+      id="previewWhereInput"
+      type="text"
+      class="query-input"
+      placeholder="1=1"
+      value="${escapeHtml(previewWhere)}"
+    />
+  </div>
+
+  <div class="query-control query-control-small">
+    <label for="previewCountInput">Record count</label>
+    <input
+      id="previewCountInput"
+      type="number"
+      min="1"
+      max="100"
+      step="1"
+      class="query-input"
+      value="${escapeHtml(previewRecordCount)}"
+    />
+  </div>
+</div>
+      
       <div class="field-filter-wrap">
         <label for="fieldFilterInput" class="sr-only">Filter fields</label>
         <input

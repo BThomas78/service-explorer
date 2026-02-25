@@ -32,13 +32,19 @@ export async function fetchLayer(serviceUrl, layerId) {
   return getJson(`${cleanBase}/${layerId}`);
 }
 
-export async function fetchLayerPreview(serviceUrl, layerId, recordCount = 5) {
+export async function fetchLayerPreview(serviceUrl, layerId, options = {}) {
   const cleanBase = serviceUrl.replace(/\/+$/, "");
   const layerUrl = `${cleanBase}/${layerId}`;
 
+  const where = String(options.where ?? "1=1").trim() || "1=1";
+  const recordCountRaw = Number(options.recordCount ?? 5);
+  const recordCount = Number.isFinite(recordCountRaw)
+    ? Math.max(1, Math.min(100, Math.floor(recordCountRaw)))
+    : 5;
+
   const url = new URL(layerUrl);
   url.pathname = `${url.pathname.replace(/\/+$/, "")}/query`;
-  url.searchParams.set("where", "1=1");
+  url.searchParams.set("where", where);
   url.searchParams.set("outFields", "*");
   url.searchParams.set("returnGeometry", "false");
   url.searchParams.set("resultRecordCount", String(recordCount));
