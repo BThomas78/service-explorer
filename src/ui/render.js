@@ -197,7 +197,11 @@ export function renderRecordPreview(queryJson) {
     .map((feature) => {
       const attrs = feature?.attributes || {};
       const cells = columns
-        .map((key) => `<td>${escapeHtml(attrs[key] ?? "")}</td>`)
+        .map((key) => {
+          const rawValue = attrs[key] ?? "";
+          const textValue = String(rawValue);
+          return `<td title="${escapeHtml(textValue)}">${escapeHtml(textValue)}</td>`;
+        })
         .join("");
 
       return `<tr>${cells}</tr>`;

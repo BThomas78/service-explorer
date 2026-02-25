@@ -100,7 +100,7 @@ layerListEl.addEventListener("click", async (event) => {
   const layerName = btn.dataset.layerName || `Layer ${layerId}`;
 
   setActiveLayerButton(btn);
-  setStatus(`Loading details for ${layerName}...`, "success");
+  setStatus(`Loading details for ${layerName}...`, "info");
   layerDetailsEl.innerHTML = `<p>Loading layer details...</p>`;
   recordPreviewEl.innerHTML = `<p class="empty-state">Click <strong>Preview 5 Records</strong> to load sample attributes.</p>`;
 
@@ -166,7 +166,7 @@ layerDetailsEl.addEventListener("click", async (event) => {
   }
 
   recordPreviewEl.innerHTML = `<p>Loading preview records...</p>`;
-  setStatus("Loading preview records...", "success");
+  setStatus("Loading preview records...", "info");
 
   try {
     const queryJson = await fetchLayerPreview(
@@ -196,7 +196,7 @@ async function handleLoadService() {
   currentLayerUrl = "";
   currentLayerId = null;
   clearResults();
-  setStatus("Loading service metadata...", "success");
+  setStatus("Loading service metadata...", "info");
   setLoadingState(true);
 
   try {
