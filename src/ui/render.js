@@ -152,6 +152,14 @@ export function renderLayerDetails(layerJson, fieldFilter = "") {
         >
           Copy Layer URL
         </button>
+
+        <button
+          type="button"
+          class="preview-records-btn"
+          data-preview-layer-id="${escapeHtml(layerId)}"
+        >
+          Preview 5 Records
+        </button>
       </div>
 
       <div class="field-filter-wrap">
@@ -167,6 +175,51 @@ export function renderLayerDetails(layerJson, fieldFilter = "") {
 
       <h3 class="subhead">Fields (${filteredFields.length} of ${fields.length})</h3>
       ${fieldsHtml}
+    </div>
+  `;
+}
+
+export function renderRecordPreview(queryJson) {
+  const features = Array.isArray(queryJson?.features) ? queryJson.features : [];
+
+  if (!features.length) {
+    return `<p class="empty-state">No records returned.</p>`;
+  }
+
+  // Build a small set of columns from first record's attributes
+  const firstAttrs = features[0]?.attributes || {};
+  const allKeys = Object.keys(firstAttrs);
+
+  // Limit to first 8 columns for readability
+  const columns = allKeys.slice(0, 8);
+
+  const rowsHtml = features
+    .map((feature) => {
+      const attrs = feature?.attributes || {};
+      const cells = columns
+        .map((key) => `<td>${escapeHtml(attrs[key] ?? "")}</td>`)
+        .join("");
+
+      return `<tr>${cells}</tr>`;
+    })
+    .join("");
+
+  return `
+    <div>
+      <p><strong>Records returned:</strong> ${features.length}</p>
+      <p class="preview-note">Showing up to ${features.length} rows and ${columns.length} columns (first columns only).</p>
+      <div class="table-wrap">
+        <table class="fields-table preview-table">
+          <thead>
+            <tr>
+              ${columns.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </div>
     </div>
   `;
 }

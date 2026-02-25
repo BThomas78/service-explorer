@@ -32,6 +32,21 @@ export async function fetchLayer(serviceUrl, layerId) {
   return getJson(`${cleanBase}/${layerId}`);
 }
 
+export async function fetchLayerPreview(serviceUrl, layerId, recordCount = 5) {
+  const cleanBase = serviceUrl.replace(/\/+$/, "");
+  const layerUrl = `${cleanBase}/${layerId}`;
+
+  const url = new URL(layerUrl);
+  url.pathname = `${url.pathname.replace(/\/+$/, "")}/query`;
+  url.searchParams.set("where", "1=1");
+  url.searchParams.set("outFields", "*");
+  url.searchParams.set("returnGeometry", "false");
+  url.searchParams.set("resultRecordCount", String(recordCount));
+  url.searchParams.set("f", "pjson");
+
+  return getJson(url.toString());
+}
+
 function withPjson(url) {
   const trimmed = url.trim();
   if (!trimmed) return trimmed;

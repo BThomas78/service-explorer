@@ -1,8 +1,9 @@
 import "./styles.css";
-import { fetchLayer, fetchService } from "./api/arcgis.js";
+import { fetchLayer, fetchLayerPreview, fetchService } from "./api/arcgis.js";
 import {
   renderLayerDetails,
   renderLayerList,
+  renderRecordPreview,
   renderServiceHeader,
 } from "./ui/render.js";
 
@@ -53,6 +54,13 @@ document.querySelector("#app").innerHTML = `
           Select a layer to view fields and metadata.
         </div>
       </section>
+
+      <section class="panel">
+        <h2>Preview Records</h2>
+        <div id="recordPreview" class="panel-body empty-state">
+          Select a layer, then click <strong>Preview 5 Records</strong>.
+        </div>
+      </section>
     </main>
   </div>
 `;
@@ -64,6 +72,7 @@ const statusEl = document.querySelector("#status");
 const serviceInfoEl = document.querySelector("#serviceInfo");
 const layerListEl = document.querySelector("#layerList");
 const layerDetailsEl = document.querySelector("#layerDetails");
+const recordPreviewEl = document.querySelector("#recordPreview");
 
 serviceUrlInput.value = DEFAULT_SERVICE_URL;
 
@@ -71,6 +80,7 @@ let currentServiceUrl = "";
 let currentLayerJson = null;
 let currentFieldFilter = "";
 let currentLayerUrl = "";
+let currentLayerId = null;
 
 loadBtn.addEventListener("click", handleLoadService);
 clearBtn.addEventListener("click", handleClear);
@@ -86,11 +96,13 @@ layerListEl.addEventListener("click", async (event) => {
   if (!btn || !currentServiceUrl) return;
 
   const layerId = btn.dataset.layerId;
+  currentLayerId = layerId;
   const layerName = btn.dataset.layerName || `Layer ${layerId}`;
 
   setActiveLayerButton(btn);
   setStatus(`Loading details for ${layerName}...`, "success");
   layerDetailsEl.innerHTML = `<p>Loading layer details...</p>`;
+  recordPreviewEl.innerHTML = `<p class="empty-state">Click <strong>Preview 5 Records</strong> to load sample attributes.</p>`;
 
   try {
     const layerJson = await fetchLayer(currentServiceUrl, layerId);
@@ -129,18 +141,44 @@ layerDetailsEl.addEventListener("input", (event) => {
 
 layerDetailsEl.addEventListener("click", async (event) => {
   const copyBtn = event.target.closest(".copy-layer-url-btn");
-  if (!copyBtn) return;
+  if (copyBtn) {
+    if (!currentLayerUrl) {
+      setStatus("No layer URL available to copy.", "error");
+      return;
+    }
 
-  if (!currentLayerUrl) {
-    setStatus("No layer URL available to copy.", "error");
+    try {
+      await navigator.clipboard.writeText(currentLayerUrl);
+      setStatus("Layer URL copied to clipboard.", "success");
+    } catch (err) {
+      setStatus("Clipboard copy failed. Try copying manually.", "error");
+    }
+
     return;
   }
 
+  const previewBtn = event.target.closest(".preview-records-btn");
+  if (!previewBtn) return;
+
+  if (!currentServiceUrl || currentLayerId == null) {
+    setStatus("Select a layer before previewing records.", "error");
+    return;
+  }
+
+  recordPreviewEl.innerHTML = `<p>Loading preview records...</p>`;
+  setStatus("Loading preview records...", "success");
+
   try {
-    await navigator.clipboard.writeText(currentLayerUrl);
-    setStatus("Layer URL copied to clipboard.", "success");
+    const queryJson = await fetchLayerPreview(
+      currentServiceUrl,
+      currentLayerId,
+      5,
+    );
+    recordPreviewEl.innerHTML = renderRecordPreview(queryJson);
+    setStatus("Preview records loaded.", "success");
   } catch (err) {
-    setStatus("Clipboard copy failed. Try copying manually.", "error");
+    recordPreviewEl.innerHTML = `<p class="empty-state">Could not load preview records.</p>`;
+    setStatus(err.message || "Failed to load preview records.", "error");
   }
 });
 
@@ -156,6 +194,7 @@ async function handleLoadService() {
   currentLayerJson = null;
   currentFieldFilter = "";
   currentLayerUrl = "";
+  currentLayerId = null;
   clearResults();
   setStatus("Loading service metadata...", "success");
   setLoadingState(true);
@@ -192,6 +231,7 @@ function handleClear() {
   currentLayerJson = null;
   currentFieldFilter = "";
   currentLayerUrl = "";
+  currentLayerId = null;
   serviceUrlInput.value = DEFAULT_SERVICE_URL;
   statusEl.textContent = "";
   statusEl.className = "status";
@@ -219,6 +259,7 @@ function clearResults() {
   serviceInfoEl.innerHTML = `<p class="empty-state">Loading...</p>`;
   layerListEl.innerHTML = `<p class="empty-state">Loading...</p>`;
   layerDetailsEl.innerHTML = `<p class="empty-state">Waiting for service load...</p>`;
+  recordPreviewEl.innerHTML = `<p class="empty-state">Waiting for service load...</p>`;
 }
 
 function setStatus(message, type = "") {
