@@ -54,7 +54,7 @@ export async function fetchLayer(serviceUrl, layerId) {
   return getJson(`${cleanBase}/${layerId}`);
 }
 
-export async function fetchLayerPreview(serviceUrl, layerId, options = {}) {
+export function buildLayerPreviewQueryUrl(serviceUrl, layerId, options = {}) {
   const cleanBase = serviceUrl.replace(/\/+$/, "");
   const layerUrl = `${cleanBase}/${layerId}`;
 
@@ -72,7 +72,12 @@ export async function fetchLayerPreview(serviceUrl, layerId, options = {}) {
   url.searchParams.set("resultRecordCount", String(recordCount));
   url.searchParams.set("f", "pjson");
 
-  return getJson(url.toString(), { timeoutMs: 15000 });
+  return url.toString();
+}
+
+export async function fetchLayerPreview(serviceUrl, layerId, options = {}) {
+  const queryUrl = buildLayerPreviewQueryUrl(serviceUrl, layerId, options);
+  return getJson(queryUrl, { timeoutMs: 15000 });
 }
 
 function withPjson(url) {

@@ -1,5 +1,10 @@
 import "./styles.css";
-import { fetchLayer, fetchLayerPreview, fetchService } from "./api/arcgis.js";
+import {
+  fetchLayer,
+  fetchLayerPreview,
+  fetchService,
+  buildLayerPreviewQueryUrl,
+} from "./api/arcgis.js";
 import {
   renderLayerDetails,
   renderLayerList,
@@ -81,8 +86,27 @@ let currentLayerJson = null;
 let currentFieldFilter = "";
 let currentLayerUrl = "";
 let currentLayerId = null;
+
 let currentPreviewWhere = "1=1";
 let currentPreviewRecordCount = 5;
+let currentPreviewQueryUrl = "";
+
+recordPreviewEl.addEventListener("click", async (event) => {
+  const btn = event.target.closest(".copy-query-url-btn");
+  if (!btn) return;
+
+  if (!currentPreviewQueryUrl) {
+    setStatus("No query URL available to copy.", "error");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(currentPreviewQueryUrl);
+    setStatus("Query URL copied to clipboard.", "success");
+  } catch {
+    setStatus("Clipboard copy failed. Copy from the box manually.", "error");
+  }
+});
 
 loadBtn.addEventListener("click", handleLoadService);
 clearBtn.addEventListener("click", handleClear);
@@ -103,7 +127,7 @@ layerListEl.addEventListener("click", async (event) => {
 
   setActiveLayerButton(btn);
   setStatus(`Loading details for ${layerName}...`, "info");
-  layerDetailsEl.innerHTML = `<p> class="empty-state">Loading layer details...</p>`;
+  layerDetailsEl.innerHTML = `<p class="empty-state">Loading layer details...</p>`;
   recordPreviewEl.innerHTML = `<p class="empty-state">Click <strong>Preview Records</strong> to load sample attributes.</p>`;
 
   try {
@@ -203,6 +227,15 @@ layerDetailsEl.addEventListener("click", async (event) => {
   setStatus("Loading preview records...", "info");
 
   try {
+    currentPreviewQueryUrl = buildLayerPreviewQueryUrl(
+      currentServiceUrl,
+      currentLayerId,
+      {
+        where: currentPreviewWhere,
+        recordCount: currentPreviewRecordCount,
+      },
+    );
+
     const queryJson = await fetchLayerPreview(
       currentServiceUrl,
       currentLayerId,
@@ -215,7 +248,6 @@ layerDetailsEl.addEventListener("click", async (event) => {
     recordPreviewEl.innerHTML = renderRecordPreview(queryJson);
     setStatus("Preview records loaded.", "success");
   } catch (err) {
-    recordPreviewEl.innerHTML = `<p class="empty-state">Could not load preview records.</p>`;
     const msg = err?.message || "Failed to load preview records.";
     const lower = msg.toLowerCase();
     const whereHint =
@@ -227,6 +259,22 @@ layerDetailsEl.addEventListener("click", async (event) => {
       lower.includes("code 400")
         ? " Check your WHERE clause syntax (field names, quotes, and operators)."
         : "";
+
+    const safeUrl = String(currentPreviewQueryUrl || "")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
+
+    recordPreviewEl.innerHTML = `
+    <p class="empty-state">Could not load preview records.</p>
+    <button type="button" class="secondary-btn copy-query-url-btn" ${
+      currentPreviewQueryUrl ? "" : "disabled"
+    }>Copy Query URL</button>
+    ${
+      currentPreviewQueryUrl
+        ? `<code>${safeUrl}</code>`
+        : `<p class="empty-state">No query URL available.</p>`
+    }
+  `;
 
     setStatus(`${msg}${whereHint}`, "error");
   }
