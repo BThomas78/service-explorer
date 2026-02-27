@@ -87,6 +87,7 @@ export function renderLayerDetails(
   fieldFilter = "",
   previewWhere = "1=1",
   previewRecordCount = 5,
+  options = {},
 ) {
   const name = layerJson.name || "Unnamed layer";
   const geometryType = layerJson.geometryType || "N/A";
@@ -94,6 +95,11 @@ export function renderLayerDetails(
   const objectIdField = layerJson.objectIdField || "N/A";
   const layerId = layerJson.id ?? "";
   const fields = Array.isArray(layerJson.fields) ? layerJson.fields : [];
+
+  const canCopyUrl = options?.canCopyUrl ?? true;
+  const canPreview = options?.canPreview ?? true;
+  const previewButtonText =
+    options?.previewButtonText ?? `Preview ${previewRecordCount} Records`;
 
   const filterText = String(fieldFilter || "")
     .trim()
@@ -149,11 +155,12 @@ export function renderLayerDetails(
       <p><strong>Geometry:</strong> ${escapeHtml(geometryType)}</p>
       <p><strong>ObjectID Field:</strong> ${escapeHtml(objectIdField)}</p>
 
-      <div class="detail-actions">
+            <div class="detail-actions">
         <button
           type="button"
           class="copy-layer-url-btn"
           data-copy-layer-id="${escapeHtml(layerId)}"
+          ${canCopyUrl ? "" : "disabled"}
         >
           Copy Layer URL
         </button>
@@ -162,8 +169,9 @@ export function renderLayerDetails(
           type="button"
           class="preview-records-btn"
           data-preview-layer-id="${escapeHtml(layerId)}"
+          ${canPreview ? "" : "disabled"}
         >
-          Preview ${escapeHtml(previewRecordCount)} Records
+          ${escapeHtml(previewButtonText)}
         </button>
       </div>
 

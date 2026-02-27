@@ -91,6 +91,9 @@ let currentPreviewWhere = "1=1";
 let currentPreviewRecordCount = 5;
 let currentPreviewQueryUrl = "";
 
+let isServiceLoading = false;
+let isPreviewLoading = false;
+
 recordPreviewEl.addEventListener("click", async (event) => {
   const btn = event.target.closest(".copy-query-url-btn");
   if (!btn) return;
@@ -119,7 +122,14 @@ serviceUrlInput.addEventListener("keydown", (event) => {
 
 layerListEl.addEventListener("click", async (event) => {
   const btn = event.target.closest(".layer-btn");
-  if (!btn || !currentServiceUrl) return;
+  if (!btn) return;
+
+  if (isServiceLoading) {
+    setStatus("Service is still loading. Please wait…", "info");
+    return;
+  }
+
+  if (!currentServiceUrl) return;
 
   const layerId = btn.dataset.layerId;
   currentLayerId = layerId;
@@ -136,13 +146,11 @@ layerListEl.addEventListener("click", async (event) => {
     currentLayerUrl = `${currentServiceUrl}/${layerId}`;
     currentFieldFilter = "";
     currentPreviewWhere = "1=1";
-    currentPreviewRecordCount = 5;
-    layerDetailsEl.innerHTML = renderLayerDetails(
-      currentLayerJson,
-      currentFieldFilter,
-      currentPreviewWhere,
-      currentPreviewRecordCount,
-    );
+    isPreviewLoading = false;
+    currentPreviewQueryUrl = "";
+
+    renderCurrentLayerDetails();
+
     setStatus(`Loaded details for ${layerName}.`, "success");
   } catch (err) {
     layerDetailsEl.innerHTML = `<p class="empty-state">Could not load layer details.</p>`;
@@ -177,12 +185,7 @@ layerDetailsEl.addEventListener("input", (event) => {
 
   if (!fieldInput && !whereInput && !countInput) return;
 
-  layerDetailsEl.innerHTML = renderLayerDetails(
-    currentLayerJson,
-    currentFieldFilter,
-    currentPreviewWhere,
-    currentPreviewRecordCount,
-  );
+  renderCurrentLayerDetails();
 
   // Restore focus to whichever input was edited
   const activeId = event.target.id;
@@ -222,6 +225,12 @@ layerDetailsEl.addEventListener("click", async (event) => {
     setStatus("Select a layer before previewing records.", "error");
     return;
   }
+
+  // Prevent double-click spam
+  if (isPreviewLoading) return;
+
+  isPreviewLoading = true;
+  renderCurrentLayerDetails();
 
   recordPreviewEl.innerHTML = `<p>Loading preview records...</p>`;
   setStatus("Loading preview records...", "info");
@@ -277,6 +286,9 @@ layerDetailsEl.addEventListener("click", async (event) => {
   `;
 
     setStatus(`${msg}${whereHint}`, "error");
+  } finally {
+    isPreviewLoading = false;
+    renderCurrentLayerDetails();
   }
 });
 
@@ -288,6 +300,9 @@ async function handleLoadService() {
     return;
   }
 
+  isServiceLoading = true;
+  setLoadingState(true);
+
   currentServiceUrl = "";
   currentLayerJson = null;
   currentFieldFilter = "";
@@ -295,9 +310,9 @@ async function handleLoadService() {
   currentLayerId = null;
   currentPreviewWhere = "1=1";
   currentPreviewRecordCount = 5;
+
   clearResults();
   setStatus("Loading service metadata...", "info");
-  setLoadingState(true);
 
   try {
     const serviceJson = await fetchService(url);
@@ -308,11 +323,13 @@ async function handleLoadService() {
       serviceJson.layers,
       serviceJson.tables,
     );
+
     layerDetailsEl.innerHTML = `
       <p class="empty-state">
         Service loaded. Click a layer or table to view fields and metadata.
       </p>
     `;
+
     setStatus("Service loaded successfully.", "success");
   } catch (err) {
     setStatus(err.message || "Failed to load service.", "error");
@@ -320,12 +337,18 @@ async function handleLoadService() {
     layerListEl.innerHTML = `<p class="empty-state">No layers loaded.</p>`;
     layerDetailsEl.innerHTML = `<p class="empty-state">No layer details loaded.</p>`;
   } finally {
+    isServiceLoading = false;
     setLoadingState(false);
+    renderCurrentLayerDetails(); // optional (safe)
   }
 }
 
 function handleClear() {
   if (loadBtn.disabled) return;
+
+  isServiceLoading = false;
+  isPreviewLoading = false;
+  currentPreviewQueryUrl = "";
 
   currentServiceUrl = "";
   currentLayerJson = null;
@@ -370,6 +393,30 @@ function clearResults() {
 function setStatus(message, type = "") {
   statusEl.textContent = message;
   statusEl.className = `status ${type}`.trim();
+}
+
+function renderCurrentLayerDetails() {
+  if (!currentLayerJson) return;
+
+  const canCopyUrl = Boolean(currentLayerUrl) && !isServiceLoading;
+
+  const canPreview =
+    Boolean(currentServiceUrl) &&
+    currentLayerId != null &&
+    !isServiceLoading &&
+    !isPreviewLoading;
+
+  const previewButtonText = isPreviewLoading
+    ? "Loading..."
+    : `Preview ${currentPreviewRecordCount} Records`;
+
+  layerDetailsEl.innerHTML = renderLayerDetails(
+    currentLayerJson,
+    currentFieldFilter,
+    currentPreviewWhere,
+    currentPreviewRecordCount,
+    { canCopyUrl, canPreview, previewButtonText },
+  );
 }
 
 function setActiveLayerButton(activeBtn) {
